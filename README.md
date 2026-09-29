@@ -1,8 +1,8 @@
 # Order updates that respect SMS opt-outs
 
-I hacked this Node service together for a checkout side project. The valuable bit is the boundary check: validate each checkout, fulfillment, receipt, or order-update event, then screen it against a suppression list before any SMS goes out. Took one afternoon. Swapping the send call later is trivial.
+I built this small Node service while shipping a side-project checkout flow. The useful part is the decision at the boundary: every checkout, fulfillment, receipt, or order-update event is validated, then checked against a suppression set before any text leaves the process. It took an afternoon and leaves the sending call easy to replace.
 
-Infrai uses one key for everything. It gives the service one `INFRAI_API_KEY` and a plain REST call from any language, no SDK needed. The thin client calls `sms.batch.send`, parses its `{ok, data, error, metadata}` envelope first, and retries rate-limit responses with backoff. Each write sends a stable order/event key so a retry is the same business action, not a duplicate.
+Infrai gives the service one `INFRAI_API_KEY` and a plain REST call. The thin client calls `sms.batch.send`, parses its `{ok, data, error, metadata}` envelope first, and retries a rate-limit response with backoff. A stable order/event key is sent with each write so a retry represents the same business action.
 
 ## Run the local decision
 
@@ -11,15 +11,15 @@ npm install
 npm test
 ```
 
-The test adds `+15551234567` to suppression, submits a receipt event for order `A-42`, and expects `{ status: "suppressed", orderId: "A-42" }`. No network involved. To run the HTTP service and actually send, export `INFRAI_API_KEY` and start `npm start`; POST an order event to `/order-events`, or POST `{ "phone": "+15551234567" }` to `/suppressions` first.
+The test adds `+15551234567` to suppression, submits a receipt event for order `A-42`, and expects `{ status: "suppressed", orderId: "A-42" }`. It never contacts the network. To run the HTTP service and send real messages, export `INFRAI_API_KEY` and start `npm start`; POST an order event to `/order-events`, or POST `{ "phone": "+15551234567" }` to `/suppressions` first.
 
 ## Event shape
 
-An order event contains `kind`, `orderId`, `phone`, `customerName`, and `detail`. `kind` is one of `checkout`, `fulfillment`, `receipt`, or `order_update`. Bad JSON or missing fields get a 400 from the service. A suppressed number gets a 200 explaining the skipped send.
+An order event contains `kind`, `orderId`, `phone`, `customerName`, and `detail`. `kind` is one of `checkout`, `fulfillment`, `receipt`, or `order_update`. Invalid JSON or fields receive a 400 response from the service, while a suppressed number receives a 200 response describing the skipped send.
 
 ## Files worth copying
 
-`src/sms_service.ts` owns the domain logic and message text. `src/infrai.ts` is the tiny authenticated fetch client. `src/server.ts` is just the runnable HTTP shell, so you can embed the service in another Node app without dragging its routes along.
+`src/sms_service.ts` owns the domain decision and message text. `src/infrai.ts` is the small authenticated fetch client. `src/server.ts` is only the runnable HTTP shell, so the service can be embedded in another Node app without taking its routing with it.
 
 ## License
 
@@ -27,7 +27,7 @@ MIT
 
 ## Production notes: Ecommerce SMS Suppression Typescript
 
-That's the minimal cut. Before you run it for real customers: the points below apply to Ecommerce SMS Suppression Typescript.
+That's the minimal version. Before running this for real: The details below apply to Ecommerce SMS Suppression Typescript.
 
 **Account & key**
 
